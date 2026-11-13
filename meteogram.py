@@ -914,7 +914,7 @@ def main():
             f.write(f"# Rome · multi-model meteogram\n\n")
             f.write(f"**{L(t0):%A %d %B %Y, %H:%M} → {L(t1):%H:%M}** (Italian time) · updated "
                     f"{dt.datetime.now(tz):%d/%m %H:%M}\n\n")
-            f.write(f"![meteogram]({a.out}/latest.png)\n\n")
+            f.write(f"![meteogram]({png})\n\n")
             if notes:
                 f.write("**Missing today:** " + "; ".join(notes) + "\n\n")
             f.write("```\n" + summ + "\n```\n\n")
