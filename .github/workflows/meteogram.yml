@@ -2,13 +2,13 @@ name: Rome meteogram
 
 on:
   schedule:
-    # every day at 08:30 UTC = 09:30 in Rome in winter, 10:30 in summer
-    # (MOLOCH and BOLAM of the day are published around 08:00-08:30 UTC)
-    - cron: "30 8 * * *"
-  workflow_dispatch:        # "Run workflow" button, to make one now
+    # 08:17 UTC (09:17 in Rome in winter); 09:17 UTC is a second chance if GitHub skips the first
+    - cron: "17 8 * * *"
+    - cron: "17 9 * * *"
+  workflow_dispatch:        # "Run workflow" button / gh workflow run
 
 permissions:
-  contents: write           # to save the meteogram in the repository
+  contents: write
 
 concurrency:
   group: meteogram
@@ -21,21 +21,35 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Already done today?
+        id: check
+        run: |
+          today=$(TZ=Europe/Rome date +%Y-%m-%d)
+          last=$(git log -1 --format=%s -- meteograms/latest.png || true)
+          if [ "${{ github.event_name }}" = "schedule" ] && echo "$last" | grep -q "Meteogram $today"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "today's meteogram is already there"
+          fi
+
       - uses: actions/setup-python@v6
+        if: steps.check.outputs.skip != 'true'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install
+        if: steps.check.outputs.skip != 'true'
         run: pip install -r requirements.txt
 
       - name: Make the meteogram (next 15 hours)
+        if: steps.check.outputs.skip != 'true'
         run: python meteogram.py --hours 15 --out meteograms --keep 14
 
       - name: Save it in the repository
+        if: steps.check.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A meteograms README.md
           git commit -m "Meteogram $(TZ=Europe/Rome date +'%Y-%m-%d %H:%M')" || exit 0
+          git pull --rebase
           git push
